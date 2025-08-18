@@ -1,0 +1,19 @@
+{
+  "arduino": {
+    "mac": "AA:BB:CC:DD:EE:FF",
+    "ip": "192.168.0.50",
+    "apelido": "Estufa01"
+  },
+  "sensores": {
+    "umidade_solo": 45,
+    "umidade_ar": 62,
+    "temperatura": 27.4,
+    "luminosidade": 830
+  },
+  "roles": {
+    "irrigacao": "on",
+    "ventilacao": "off",
+    "iluminacao": "auto"
+  },
+  "timestamp": "2025-08-18T15:34:00Z"
+}
