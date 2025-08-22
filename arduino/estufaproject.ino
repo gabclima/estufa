@@ -24,6 +24,10 @@ const int ledPin = 2;
 bool ledState = false;
 const int buttonPin = 0;
 
+// ==== Relés ====
+const int relePins[8] = {13, 12, 14, 27, 26, 25, 33, 32};
+bool releStates[8] = {false};
+
 // ==== Setup ====
 void setup() {
   Serial.begin(115200);
@@ -33,6 +37,11 @@ void setup() {
   pinMode(buttonPin, INPUT_PULLUP);
   pinMode(ledPin, OUTPUT);
   digitalWrite(ledPin, LOW);
+
+  for (int i = 0; i < 8; i++) {
+    pinMode(relePins[i], OUTPUT);
+    digitalWrite(relePins[i], LOW);
+  }
 
   // Conexões
   connectWiFi();
@@ -56,7 +65,7 @@ void loop() {
   socket.send(dhtData + ":dht:localhost:esp");
   delay(1000);
 
-  // Controle do LED via botão
+  // Controle do LED via botão local
   if (digitalRead(buttonPin) == LOW) {
     ledState = !ledState;
     digitalWrite(ledPin, ledState);
@@ -77,6 +86,14 @@ void handleMessage(WebsocketsMessage message) {
   if (sensor == "led") {
     ledState = status.toInt();
     digitalWrite(ledPin, ledState);
+  } 
+  else if (sensor.startsWith("rele")) {
+    int releIndex = sensor.substring(4).toInt(); // rele1 → 1
+    if (releIndex >= 1 && releIndex <= 8) {
+      int idx = releIndex - 1;
+      releStates[idx] = status.toInt();
+      digitalWrite(relePins[idx], releStates[idx]);
+    }
   }
 }
 
@@ -92,12 +109,6 @@ void handleEvent(WebsocketsEvent event, WSInterfaceString data) {
       Serial.println("WebSocket desconectado.");
       connected = false;
       break;
-    case WebsocketsEvent::GotPing:
-      Serial.println("Ping recebido.");
-      break;
-    case WebsocketsEvent::GotPong:
-      Serial.println("Pong recebido.");
-      break;
     default:
       break;
   }
@@ -106,11 +117,8 @@ void handleEvent(WebsocketsEvent event, WSInterfaceString data) {
 // ==== Conecta ao WebSocket ====
 void connectToWebSocket() {
   connected = socket.connect(websocketServer);
-  if (connected) {
-    Serial.println("Conectado ao WebSocket!");
-  } else {
-    Serial.println("Falha na conexão com o WebSocket.");
-  }
+  if (connected) Serial.println("Conectado ao WebSocket!");
+  else Serial.println("Falha na conexão com o WebSocket.");
 }
 
 // ==== Conecta ao WiFi ====
@@ -118,15 +126,11 @@ void connectWiFi() {
   WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password);
   Serial.print("Conectando ao WiFi");
-
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
     Serial.print(".");
   }
-
-  Serial.println();
-  Serial.print("Conectado ao WiFi. IP: ");
-  Serial.println(WiFi.localIP());
+  Serial.println("\nConectado ao WiFi. IP: " + WiFi.localIP().toString());
 }
 
 // ==== Lê dados do DHT22 ====
@@ -138,9 +142,6 @@ String loadDHT22Data() {
     Serial.println("Falha na leitura do DHT22!");
     return "0,0";
   }
-
-  Serial.println("Temperatura: " + String(temperature) + " °C");
-  Serial.println("Umidade: " + String(humidity) + " %");
 
   return String(temperature) + "," + String(humidity);
 }
@@ -157,7 +158,6 @@ String parseData(String data, int index) {
       result = data.substring(start, end);
       break;
     }
-
     start = end + 1;
     end = data.indexOf(":", start);
     currentIndex++;
